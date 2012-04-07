@@ -68,15 +68,18 @@ sub get_key {
     my $digest = sha1_hex($key);
     my $od = $self->root->subdir("objects");
 
-    my $value = $od->file("${digest}.body")->slurp;
-    my $meta = decode_json($od->file("${digest}.meta")->slurp);
-    my $etag = $od->file("${digest}.etag")->slurp;
+    my $ret = decode_json($od->file("${digest}.meta")->slurp);
 
-    return {
-        %$meta,
-        etag  => $etag,
-        value => $value
+    my $x;
+    if ( ($x = $od->file("${digest}.etag"))->exists ) {
+        $ret->{etag} = $x->slurp;
     }
+
+    if ( ($x = $od->file("${digest}.body"))->exists ) {
+        $ret->{value} = $x->slurp;
+    }
+
+    return $ret;
 }
 
 1;
