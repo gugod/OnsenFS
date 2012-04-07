@@ -39,12 +39,9 @@ sub BUILD {
 
 sub add_key {
     my ($self, $key, $value, $meta) = @_;
+    $meta = {} unless defined $meta;
 
     my $digest = sha1_hex($key);
-
-    unless (defined($meta)) {
-        $meta = {};
-    }
 
     my $od = $self->root->subdir("objects");
 
@@ -63,6 +60,35 @@ sub add_key {
     }
 }
 
+use File::Copy;
+sub link_or_copy {
+    my ($oldfile, $newfile) = @_;
+    return 1 if link($oldfile, $newfile);
+    return 1 if copy($oldfile, $newfile);
+    return 0;
+}
+
+sub add_key_filename {
+    my ($self, $key, $filename, $meta) = @_;
+    $meta = {} unless defined $meta;
+
+    my $digest = sha1_hex($key);
+
+    my $md5 = Digest::MD5->new;
+
+    link_or_copy($filename, $self->body_file($key)->stringify);
+
+    my $od = $self->root->subdir("objects");
+
+    $md5->addfile( $self->body_file($key)->openr );
+
+    for my $x ([name => $key], [meta => encode_json($meta)], [etag => $md5->hexdigest]) {
+        my $ofh = $od->file("${digest}." . $x->[0])->openw;
+        print $ofh $x->[1];
+        close $ofh;
+    }
+}
+
 sub get_key {
     my ($self, $key) = @_;
     my $digest = sha1_hex($key);
@@ -71,15 +97,33 @@ sub get_key {
     my $ret = decode_json($od->file("${digest}.meta")->slurp);
 
     my $x;
-    if ( ($x = $od->file("${digest}.etag"))->exists ) {
+    if ( -f ($x = $self->etag_file($key))->stringify ) {
         $ret->{etag} = $x->slurp;
     }
 
-    if ( ($x = $od->file("${digest}.body"))->exists ) {
+    if ( -f ($x = $self->body_file($key))->stringify ) {
         $ret->{value} = $x->slurp;
     }
 
     return $ret;
+}
+
+sub object_file {
+    my ($self, $key, $name) = @_;
+    my $digest = sha1_hex($key);
+    return $self->root->subdir("objects")->file("${digest}.${name}");
+}
+
+sub meta_file {
+    $_[0]->object_file($_[1], "meta")
+}
+
+sub body_file {
+    $_[0]->object_file($_[1], "body")
+}
+
+sub etag_file {
+    $_[0]->object_file($_[1], "etag")
 }
 
 1;

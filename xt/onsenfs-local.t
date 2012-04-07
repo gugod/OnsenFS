@@ -56,6 +56,19 @@ subtest "`add_key` method does not create .body/.etag file when value is undef" 
     ok !-f $object_files->{etag};
 };
 
+subtest "`add_key_filename` method" => sub {
+    my $fn = dir($ENV{TMPDIR}||"/tmp")->file("/onsenfstest_$$");
+    my $fh = $fn->openw;
+    print $fh "Nihao\n";
+    close($fh);
+
+    $local->add_key_filename("/foo/nihao.txt", "$fn");
+    my $digest = sha1_hex("/foo/nihao.txt");
+
+    ok -f $object_dir->file("$digest.body");
+    is $object_dir->file("$digest.body")->slurp, "Nihao\n";
+};
+
 subtest "`get_key` returns a hashref" => sub {
     my ($k, $v) = ("/foo/bar.txt", "The content of bar.");
 
