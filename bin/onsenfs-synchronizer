@@ -1,0 +1,32 @@
+#!/usr/bin/env perl
+use v5.14;
+use FindBin::libs;
+use Getopt::Long;
+use OnsenFS::Synchronizer;
+use OnsenFS::Local;
+use OnsenFS::Remote;
+use Path::Class;
+
+my $local_dir   = shift(@ARGV);
+my $bucket_name = shift(@ARGV);
+
+unless (-d $local_dir && $bucket_name) {
+    die <<USAGE;
+@{[file(__FILE__)->basename]} <local-dir> <bucket-name>
+USAGE
+}
+
+my $local = OnsenFS::Local->new(root => dir($local_dir));
+
+my $remote = OnsenFS::Remote->new(
+    access_key  => $ENV{EC2_ACCESS_KEY},
+    secret_key  => $ENV{EC2_SECRET_KEY},
+    bucket_name => $bucket_name
+);
+
+my $synchronizer = OnsenFS::Synchronizer->new(
+    local => $local,
+    remote => $remote
+);
+
+$synchronizer->run;
