@@ -26,7 +26,7 @@ has bucket => (
     required => 1,
     lazy => 1,
     builder => "_build_bucket",
-    handles => ["get_key", "set_key", "head_key", "delete_key", "list_all"]
+    handles => ["get_key", "set_key", "head_key", "delete_key", "list", "list_all"]
 );
 
 sub _build_bucket {
