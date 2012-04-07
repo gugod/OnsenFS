@@ -48,11 +48,18 @@ sub add_key {
 
     my $od = $self->root->subdir("objects");
 
-    for my $x ([body => $value], [name => $key], [meta => encode_json($meta)], [etag => md5_hex($value)]) {
+    for my $x (
+        [name => $key],
+        [meta => encode_json($meta)],
+        defined($value) ?
+        (
+            [etag => md5_hex($value)],
+            [body => $value]
+        ) : ()
+    ) {
         my $ofh = $od->file("${digest}." . $x->[0])->openw;
         print $ofh $x->[1];
         close $ofh;
-
     }
 }
 

@@ -36,6 +36,26 @@ subtest "`add_key` methods creates objects files" => sub {
     for (values %$object_files) { ok -f $_, "$_ exists"; }
 };
 
+subtest "`add_key` method does not create .body/.etag file when value is undef" => sub {
+    my ($k, $v) = ("/foo/.txt", undef);
+    $local->add_key($k, $v, { content_type => "text/plain" });
+
+    my $digest = sha1_hex($k);
+
+    my $object_files = {
+        body => $object_dir->file( "${digest}.body" ),
+        meta => $object_dir->file( "${digest}.meta" ),
+        name => $object_dir->file( "${digest}.name" ),
+        etag => $object_dir->file( "${digest}.etag" )
+    };
+
+    ok -d "$object_dir";
+    ok -f $object_files->{name};
+    ok -f $object_files->{meta};
+    ok !-f $object_files->{body};
+    ok !-f $object_files->{etag};
+};
+
 subtest "`get_key` returns a hashref" => sub {
     my ($k, $v) = ("/foo/bar.txt", "The content of bar.");
 
