@@ -1,0 +1,10 @@
+requires 'Digest::SHA1';
+requires 'File::Path::Tiny';
+requires 'JSON';
+requires 'Moose';
+requires 'Path::Class';
+requires 'Net::Amazon::S3';
+requires 'DateTime::Format::ISO8601';
+requires 'Digest::SHA1';
+requires 'Digest::MD5';
+requires 'Fuse';
