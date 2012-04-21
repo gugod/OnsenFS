@@ -8,3 +8,4 @@ requires 'DateTime::Format::ISO8601';
 requires 'Digest::SHA1';
 requires 'Digest::MD5';
 requires 'Fuse';
+requires 'Data::Recursive::Encode';
