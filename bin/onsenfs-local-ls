@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+use v5.14;
+use OnsenFS::Local;
+use Path::Class;
+
+my $root = shift(@ARGV) or die "die die";
+die unless -d $root;
+
+my $path = shift(@ARGV) || "";
+
+$path =~ s{^/}{};
+
+my $local = OnsenFS::Local->new(root => dir($root));
+my @keys = $local->list_all_keys;
+
+my @names;
+
+for my $k (@keys){
+    if ($path) {
+        next unless index($k, $path) == 0;
+
+        $k =~ s{^$path}{};
+    }
+
+    my $x = [split("/", $k =~ s{^path}{}r)]->[0];
+    push(@names, $x) unless !$x || grep { $_ eq $x } @names;
+}
+
+say for @names;
