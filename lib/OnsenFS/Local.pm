@@ -91,10 +91,8 @@ sub add_key_filename {
 
 sub get_key {
     my ($self, $key) = @_;
-    my $digest = sha1_hex($key);
-    my $od = $self->root->subdir("objects");
 
-    my $ret = decode_json($od->file("${digest}.meta")->slurp);
+    my $ret = decode_json( $self->meta_file($key)->slurp );
 
     my $x;
     if ( -f ($x = $self->etag_file($key))->stringify ) {
