@@ -23,15 +23,53 @@ has onsen_local => (
     builder => "_build_onsen_local"
 );
 
+has dirs => (
+    is => "rw",
+    isa => "HashRef",
+    lazy => 1,
+    builder => '_build_dirs'
+);
+
 method _build_onsen_local {
     OnsenFS::Local->new(root => Path::Class::dir($->root))
+}
+
+method _build_dirs {
+    my $dirs;
+
+    my @keys = $->onsen_local->list_all_keys;
+    for my $k (@keys) {
+        # say "# <= $k";
+        my $f = Path::Class::file($k);
+        my $p = $f->parent;
+
+        $dirs->{$p} ||= { dirs => [], files => [] };
+        push @{ $dirs->{$p}->{files} }, "$f";
+        $f = $p;
+        $p = $f->parent;
+
+        while ($p ne "..") {
+            unless ("$f" =~ m{/$}) {
+                $dirs->{"$p"} ||= { dirs => [], files => [] };
+
+                my $d = $dirs->{"$p"}->{dirs};
+                push(@$d, "$f") unless grep { $_ eq "$f" } @$d;
+            }
+            $f = $p;
+            $p = $f->parent;
+        }
+    }
+
+    $dirs->{""} = delete $dirs->{"."};
+
+    return $dirs;
 }
 
 method getdir($path) {
     utf8::decode($path) unless utf8::is_utf8($path);
     $path =~ s{^/}{};
 
-    say "GETDIR $path";
+    say "GETDIR($path)";
 
     my @names;
     for my $k ($->onsen_local->list_all_keys) {
@@ -50,12 +88,18 @@ method getdir($path) {
 method getattr($path) {
     utf8::decode($path) unless utf8::is_utf8($path);
 
-    say "GETATTR $path";
+    say "GETATTR($path)";
 
     my ($inode, $mode, $size, $mtime) = (0, 0755, 0, time-1);
 
-    $mode |= S_IFDIR;
-    # $mode |= S_IFREG; # if $f->is_file;
+    my $dirs = $->dirs;
+
+    if ($dirs->{ $path }) {
+        $mode |= S_IFDIR;
+    }
+    else {
+        $mode |= S_IFREG;
+    }
 
     $size  = 0;
     $inode = 42;
