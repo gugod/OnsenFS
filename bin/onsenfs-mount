@@ -14,6 +14,11 @@ sub main {
 
     my $onsen_local_vfs = OnsenFS::LocalVFS->new( root => $onsen_local_dir );
 
+    say "Init fs...";
+    my $t = time;
+    my $fs = $onsen_local_vfs->fs;
+    say "Done (@{[ time - $t]}s)";
+
     my %delegates;
     for my $method (
         qw[getdir getattr open read release statfs unlink write create

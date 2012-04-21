@@ -67,6 +67,8 @@ func link_or_copy($oldfile, $newfile) {
 }
 
 method add_key_filename($key, $filename, $meta) {
+    utf8::encode($key) if utf8::is_utf8($key);
+
     $meta = {} unless defined $meta;
 
     my $digest = sha1_hex($key);
@@ -87,6 +89,8 @@ method add_key_filename($key, $filename, $meta) {
 }
 
 method get_key($key) {
+    utf8::encode($key) if utf8::is_utf8($key);
+
     my $ret = decode_json( $self->meta_file($key)->slurp );
 
     my $x;
@@ -115,6 +119,7 @@ method list_all_keys {
 }
 
 method object_file($key, $name) {
+    my $k2 = 
     my $digest = sha1_hex($key);
     return $self->root->subdir("objects")->file("${digest}.${name}");
 }

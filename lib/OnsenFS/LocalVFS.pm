@@ -51,6 +51,7 @@ use Scalar::Util qw(refaddr);
 use OnsenFS::Local;
 use Path::Class ();
 use DateTime::Format::ISO8601;
+use Encode ();
 
 has root => (
     is => "ro",
@@ -81,6 +82,8 @@ method _build_fs {
 
     my @keys = $->onsen_local->list_all_keys;
     for my $k (@keys) {
+        utf8::decode($k) unless utf8::is_utf8($k);
+
         # say "# <= $k";
         my $f = Path::Class::file($k);
         my $p = $f->parent;
@@ -148,9 +151,9 @@ method getattr($path) {
 
     say "GETATTR($path)";
 
-    my ($inode, $mode, $size, $mtime) = (0, 0755, 0, time-1);
-
     my $f = $->fs->{$path} or return -Errno::ENOENT();
+
+    my $mode = 0755;
 
     if ($f->is_dir) {
         $mode |= S_IFDIR;
@@ -159,31 +162,29 @@ method getattr($path) {
         $mode |= S_IFREG;
     }
 
-    $size  = $f->size;
-    $inode = refaddr($f);
-    $mtime = $f->mtime;
-
     return (
         0,                      # device number (?)
-        $inode,                 # inode
+        refaddr($f),            # inode
         $mode,                  # mode
         1,                      # nlink
         $>,                     # uid
         $)+0,                   # gid
         0,                      # rdev
-        $size,                  # size
+        $f->size,               # size
         0,                      # atime
-        $mtime,                 # mtime
+        $f->mtime,              # mtime
         0,                      # ctime
         4096,                   # blocksize
-        1+int($size/4096)       # blocks
+        1+int($f->size/4096)    # blocks
     );
 }
 
 method open {
+    return 0;
 }
 
-method read {
+method read($path, $size, $offset, $fh) {
+    return "(Unimplemented)";
 }
 
 method release {
