@@ -3,7 +3,7 @@ use v5.14;
 use utf8;
 binmode STDOUT, ":utf8";
 
-use Onsen::Local;
+use OnsenFS::LocalVFS;
 use Fuse;
 
 sub main {
@@ -12,10 +12,11 @@ sub main {
     die "Local mount point not found, it should be a dir." unless -d $mount_point;
     die "Local onsen not found." unless -d $onsen_local_dir;
 
-    my $onsen_local_vfs = Onsen::LocalVFS->new(
+    my $onsen_local_vfs = OnsenFS::LocalVFS->new(
         root => $onsen_local_dir
     );
 
+    my %delegates;
     for my $method (
         qw[getdir getattr open read release statfs unlink write create
            mkdir chmod chown flush fsync fsyncdir utime
