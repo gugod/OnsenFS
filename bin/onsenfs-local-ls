@@ -10,13 +10,18 @@ my $path = shift(@ARGV) || "";
 
 my $local = OnsenFS::LocalVFS->new(root => $root);
 
-my $dirs = $local->dirs;
+my $p = $local->fs->{$path};
 
-my $p = $dirs->{$path};
-for (@{ $p->{dirs} }) {
-    say "$_/";
+exit unless $p;
+
+for (@{ $p->children}) {
+    if ($_->is_dir) {
+        say $_->name . "/";
+    }
+    else {
+        say $_->name;
+    }
 }
 
-for (@{ $p->{files} }) {
-    say "$_";
-}
+# use YAML;
+# say YAML::Dump($local->fs);

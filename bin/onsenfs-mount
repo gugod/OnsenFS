@@ -12,9 +12,7 @@ sub main {
     die "Local mount point not found, it should be a dir." unless -d $mount_point;
     die "Local onsen not found." unless -d $onsen_local_dir;
 
-    my $onsen_local_vfs = OnsenFS::LocalVFS->new(
-        root => $onsen_local_dir
-    );
+    my $onsen_local_vfs = OnsenFS::LocalVFS->new( root => $onsen_local_dir );
 
     my %delegates;
     for my $method (

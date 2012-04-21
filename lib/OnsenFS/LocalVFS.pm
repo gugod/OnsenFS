@@ -1,4 +1,45 @@
 use v5.14;
+
+package OnsenFS::LocalVFS::File {
+    use Moose;
+    use methods-invoker;
+
+    has name   => (is => "ro", isa => "Str", required => 1);
+    has mtime  => (is => "rw", isa => "Int", required => 0);
+    has size   => (is => "rw", isa => "Int", required => 0);
+    has parent => (is => "ro", isa => "Str", required => 1);
+
+    has refresh_at => (
+        is => "rw", isa => "Int", required => 1,
+        default => sub { time }
+    );
+
+    use constant is_file => 1;
+    use constant is_dir => 0;
+
+    method path () {
+        return $->parent . "/" . $->name;
+    }
+    method s3_key_name () {
+        return $->path =~ s{^/}{}r;
+    }
+};
+
+package OnsenFS::LocalVFS::Dir {
+    use Moose;
+    extends 'OnsenFS::LocalVFS::File';
+    has '+refresh_at' => ( default => sub { 0 } );
+    use constant is_file => 0;
+    use constant is_dir => 1;
+
+    has children => (
+        is => "ro",
+        isa => "ArrayRef",
+        required => 1,
+        default => sub { [ ] }
+    );
+};
+
 package OnsenFS::LocalVFS;
 use Moose;
 use methods-invoker;
@@ -9,6 +50,7 @@ use Scalar::Util qw(refaddr);
 
 use OnsenFS::Local;
 use Path::Class ();
+use DateTime::Format::ISO8601;
 
 has root => (
     is => "ro",
@@ -23,46 +65,65 @@ has onsen_local => (
     builder => "_build_onsen_local"
 );
 
-has dirs => (
+has fs => (
     is => "rw",
     isa => "HashRef",
     lazy => 1,
-    builder => '_build_dirs'
+    builder => '_build_fs'
 );
 
 method _build_onsen_local {
     OnsenFS::Local->new(root => Path::Class::dir($->root))
 }
 
-method _build_dirs {
-    my $dirs;
+method _build_fs {
+    my $fs = {};
 
     my @keys = $->onsen_local->list_all_keys;
     for my $k (@keys) {
         # say "# <= $k";
         my $f = Path::Class::file($k);
         my $p = $f->parent;
+        my $v = $->onsen_local->get_key($k);
 
-        $dirs->{$p} ||= { dirs => [], files => [] };
-        push @{ $dirs->{$p}->{files} }, "$f";
+        $fs->{"$k"} = OnsenFS::LocalVFS::File->new(
+            name   => $f->basename,
+            parent => $f->parent->stringify,
+            mtime  => DateTime::Format::ISO8601->parse_datetime($v->{last_modified})->epoch,
+            size   => $v->{size}
+        );
+
+        $fs->{"$p"} ||= OnsenFS::LocalVFS::Dir->new(
+            name   => $p->basename,
+            parent => $p->parent->stringify,
+            mtime  => time - 1,
+            size   => 0
+        );
+
+        push @{ $fs->{"$p"}->children }, $fs->{"$k"};
         $f = $p;
         $p = $f->parent;
 
         while ($p ne "..") {
             unless ("$f" =~ m{/$}) {
-                $dirs->{"$p"} ||= { dirs => [], files => [] };
+                $fs->{"$p"} ||= OnsenFS::LocalVFS::Dir->new(
+                    name   => $p->basename,
+                    parent => $p->parent->stringify,
+                    mtime  => time - 1,
+                    size   => 0
+                );
 
-                my $d = $dirs->{"$p"}->{dirs};
-                push(@$d, "$f") unless grep { $_ eq "$f" } @$d;
+                push(@{ $fs->{"$p"}->children }, $fs->{"$f"}) unless grep { refaddr($_) eq refaddr($fs->{"$f"}) } @{ $fs->{"$p"}->children };
             }
+
             $f = $p;
             $p = $f->parent;
         }
     }
 
-    $dirs->{""} = delete $dirs->{"."};
+    $fs->{""} = delete $fs->{"."};
 
-    return $dirs;
+    return $fs;
 }
 
 method getdir($path) {
@@ -71,15 +132,11 @@ method getdir($path) {
 
     say "GETDIR($path)";
 
-    my @names;
-    for my $k ($->onsen_local->list_all_keys) {
-        if ($path) {
-            next unless index($k, $path) == 0;
-            $k =~ s{^$path}{};
-        }
+    my $x = $->fs->{$path};
 
-        my $x = [split("/", $k =~ s{^path}{}r)]->[0];
-        push(@names, $x) unless !$x || grep { $_ eq $x } @names;
+    my @names;
+    for (@{ $x->children }) {
+        push @names, $_->name
     }
 
     return (@names, 0);
@@ -87,23 +144,24 @@ method getdir($path) {
 
 method getattr($path) {
     utf8::decode($path) unless utf8::is_utf8($path);
+    $path =~ s{^/}{};
 
     say "GETATTR($path)";
 
     my ($inode, $mode, $size, $mtime) = (0, 0755, 0, time-1);
 
-    my $dirs = $->dirs;
+    my $f = $->fs->{$path} or return -Errno::ENOENT();
 
-    if ($dirs->{ $path }) {
+    if ($f->is_dir) {
         $mode |= S_IFDIR;
     }
     else {
         $mode |= S_IFREG;
     }
 
-    $size  = 0;
-    $inode = 42;
-    $mtime = time - 2;
+    $size  = $f->size;
+    $inode = refaddr($f);
+    $mtime = $f->mtime;
 
     return (
         0,                      # device number (?)
