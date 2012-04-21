@@ -30,9 +30,7 @@ has root => (
     required => 1
 );
 
-sub BUILD {
-    my ($self) = @_;
-
+method BUILD {
     my $odir = $self->root->subdir("objects");
 
     unless (-d $odir) {
@@ -40,8 +38,7 @@ sub BUILD {
     }
 }
 
-sub add_key {
-    my ($self, $key, $value, $meta) = @_;
+method add_key($key, $value, $meta) {
     $meta = {} unless defined $meta;
 
     my $digest = sha1_hex($key);
@@ -63,15 +60,13 @@ sub add_key {
     }
 }
 
-sub link_or_copy {
-    my ($oldfile, $newfile) = @_;
+func link_or_copy($oldfile, $newfile) {
     return 1 if link($oldfile, $newfile);
     return 1 if copy($oldfile, $newfile);
     return 0;
 }
 
-sub add_key_filename {
-    my ($self, $key, $filename, $meta) = @_;
+method add_key_filename($key, $filename, $meta) {
     $meta = {} unless defined $meta;
 
     my $digest = sha1_hex($key);
@@ -91,9 +86,7 @@ sub add_key_filename {
     }
 }
 
-sub get_key {
-    my ($self, $key) = @_;
-
+method get_key($key) {
     my $ret = decode_json( $self->meta_file($key)->slurp );
 
     my $x;
@@ -121,22 +114,21 @@ method list_all_keys {
     return @names;
 }
 
-sub object_file {
-    my ($self, $key, $name) = @_;
+method object_file($key, $name) {
     my $digest = sha1_hex($key);
     return $self->root->subdir("objects")->file("${digest}.${name}");
 }
 
-sub meta_file {
-    $_[0]->object_file($_[1], "meta")
+method meta_file($key) {
+    $->object_file($key, "meta")
 }
 
-sub body_file {
-    $_[0]->object_file($_[1], "body")
+method body_file($key) {
+    $->object_file($key, "body")
 }
 
-sub etag_file {
-    $_[0]->object_file($_[1], "etag")
+method etag_file($key) {
+    $->object_file($key, "etag")
 }
 
 1;
