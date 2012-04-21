@@ -79,6 +79,14 @@ subtest "`get_key` returns a hashref" => sub {
     is $obj->{etag}, md5_hex($v), "etag";
 };
 
+subtest "`list_all_keys` returns an list of filenames" => sub {
+    my @keys = $local->list_all_keys;
+
+    for (@keys) {
+        ok "go", $_;
+    }
+};
+
 
 done_testing;
 

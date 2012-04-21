@@ -15,11 +15,14 @@ Synchronizer observe the changes on Local and replicate the changes to S3 server
 
 
 use Moose;
+use methods-invoker;
+
 use Path::Class;
 use File::Path::Tiny;
 use Digest::SHA1 qw(sha1_hex);
 use Digest::MD5 qw(md5_hex);
 use JSON;
+use File::Copy;
 
 has root => (
     is => "ro",
@@ -33,7 +36,7 @@ sub BUILD {
     my $odir = $self->root->subdir("objects");
 
     unless (-d $odir) {
-        File::Path::Tiny::mk($odir);
+        File::Path::Tiny::mk("$odir");
     }
 }
 
@@ -60,7 +63,6 @@ sub add_key {
     }
 }
 
-use File::Copy;
 sub link_or_copy {
     my ($oldfile, $newfile) = @_;
     return 1 if link($oldfile, $newfile);
@@ -104,6 +106,19 @@ sub get_key {
     }
 
     return $ret;
+}
+
+method list_all_keys {
+    my $object_dir = $->root->subdir("objects");
+    my $dh = $object_dir->open;
+
+    my @names;
+    while (my $fn = $dh->read) {
+        next unless $fn =~ /\.name$/;
+        my $k = $object_dir->file($fn)->slurp;
+        push @names, $k;
+    }
+    return @names;
 }
 
 sub object_file {
