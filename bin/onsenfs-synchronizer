@@ -10,10 +10,16 @@ use Path::Class;
 my $local_dir   = shift(@ARGV);
 my $bucket_name = shift(@ARGV);
 
-unless (-d $local_dir && $bucket_name) {
-    die <<USAGE;
+my $USAGE = <<USAGE;
 @{[file(__FILE__)->basename]} <local-dir> <bucket-name>
 USAGE
+
+unless (-d $local_dir) {
+    die "$local_dir is not a dir, or does no exist.";
+}
+
+unless ($bucket_name) {
+    die $USAGE;
 }
 
 my $local = OnsenFS::Local->new(root => dir($local_dir));
