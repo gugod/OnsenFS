@@ -1,6 +1,12 @@
 # -*- perl -*-
+
 use v5.14;
 use Test::More;
+
+unless ($ENV{TEST_ONSENFS_REMOTE_BUCKET}) {
+    plan skip_all => "not testing with TEST_ONSENFS_REMOTE_BUCKET";
+    exit;
+}
 
 use OnsenFS::Remote;
 
