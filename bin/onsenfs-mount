@@ -1,0 +1,34 @@
+#!/sur/bin/env perl
+use v5.14;
+use utf8;
+binmode STDOUT, ":utf8";
+
+use Onsen::Local;
+use Fuse;
+
+sub main {
+    my ($onsen_local_dir, $mount_point) = @_;
+
+    die "Local mount point not found, it should be a dir." unless -d $mount_point;
+    die "Local onsen not found." unless -d $onsen_local_dir;
+
+    my $onsen_local_vfs = Onsen::LocalVFS->new(
+        root => $onsen_local_dir
+    );
+
+    for my $method (
+        qw[getdir getattr open read release statfs unlink write create
+           mkdir chmod chown flush fsync fsyncdir utime
+           setxattr getxattr listxattr removexattr]
+    ) {
+        $delegates{$method} = sub { return $onsen_local_vfs->$method(@_) };
+    }
+
+    Fuse::main(
+        debug => $ENV{FUSE_DEBUG} ||0,
+        mountpoint => $mount_point,
+        %delegates
+    );
+}
+
+main(@ARGV);
